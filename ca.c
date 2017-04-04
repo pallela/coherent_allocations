@@ -14,6 +14,9 @@ struct dentry *file;
 #define NUM_BUFFERS 64
 #define LOGGING 1
 
+#define DMA_BAR_NUM 0
+#define DEV_ID 0x8038
+
 struct mydata
 {
 	void *tx_queue;
@@ -102,7 +105,7 @@ ssize_t example_read (struct file *filp, char __user * userdata, size_t size, lo
 	struct pci_dev *dev;	
 
 	//dev = pci_get_device(0x10ee,0x8038, NULL);
-	dev = pci_get_device(0x10ee,0x8028, NULL);
+	dev = pci_get_device(0x10ee,DEV_ID, NULL);
 
 	if(!dev) {
 		return -ENODEV;
@@ -110,8 +113,9 @@ ssize_t example_read (struct file *filp, char __user * userdata, size_t size, lo
 
 	data = filp->private_data;
 
-	data->bar_base_addr_phy = pci_resource_start(dev, 0);
-	bar_len = pci_resource_len(dev, 0);
+	//data->bar_base_addr_phy = pci_resource_start(dev, 0);
+	data->bar_base_addr_phy = pci_resource_start(dev, DMA_BAR_NUM);
+	bar_len = pci_resource_len(dev, DMA_BAR_NUM);
 	/* do not map BARs with length 0. Note that start MAY be 0! */
 	if (!bar_len) {
 		printk("BAR #%d is not present - skipping\n", 0);
@@ -130,7 +134,7 @@ int mmapfop_close(struct inode *inode,struct file *filp)
 	int i;
 	struct pci_dev *dev;
 	//dev = pci_get_device(0x10ee,0x8038, NULL);
-	dev = pci_get_device(0x10ee,0x8028, NULL);
+	dev = pci_get_device(0x10ee,DEV_ID, NULL);
 
 	if(!dev) {
 		return -ENODEV;
@@ -166,7 +170,7 @@ int mmapfop_open(struct inode *inode, struct file *filp)
 	int i;
 	struct pci_dev *dev;
 	//dev = pci_get_device(0x10ee,0x8038, NULL);
-	dev = pci_get_device(0x10ee,0x8028, NULL);
+	dev = pci_get_device(0x10ee,DEV_ID, NULL);
 
 	if(!dev) {
 		return -ENODEV;
@@ -204,11 +208,12 @@ int mmapfop_open(struct inode *inode, struct file *filp)
 	data->rx_result = dma_alloc_coherent(&dev->dev,PAGE_SIZE,&data->rx_result_dma_addr,GFP_KERNEL);
 
 	#if LOGGING
-	if(!data->rx_queue) {
+	if(!data->rx_result) {
 		printk("rx result allocation failed\n");
 	}
 	else {
 		printk("rx result allocated at kvaddr : %p and dma addr : %p\n",data->rx_result,(void *) data->rx_result_dma_addr);
+		memset (data->rx_result, 0, PAGE_SIZE);
 	}
 	#endif
 	
